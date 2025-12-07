@@ -1,0 +1,11 @@
+00500093  // ADDI x1, x0, 5    -> x1 = 5
+00A00113  // ADDI x2, x0, 10   -> x2 = 10
+002081B3  // ADD  x3, x1, x2   -> x3 = 5 + 10 = 15
+40110233  // SUB  x4, x2, x1   -> x4 = 10 - 5 = 5
+0020F2B3  // AND  x5, x1, x2   -> x5 = 5 & 10 = 0
+0020E333  // OR   x6, x1, x2   -> x6 = 5 | 10 = 15
+00102023  // SW   x1, 0(x0)    -> MEM[0] = 5
+00002383  // LW   x7, 0(x0)    -> x7 = MEM[0] = 5
+00108463  // BEQ  x1, x1, 8    -> Branch taken (skip next instruction)
+06300413  // ADDI x8, x0, 99   -> x8 = 99 (SHOULD BE SKIPPED)
+04D00493  // ADDI x9, x0, 77   -> x9 = 77
