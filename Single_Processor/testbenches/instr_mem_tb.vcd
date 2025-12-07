@@ -1,0 +1,54 @@
+$date
+	Sat Dec 06 17:41:12 2025
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module instr_mem_tb $end
+$var wire 32 ! instr_out [31:0] $end
+$var reg 32 " read_address [31:0] $end
+$var reg 1 # reset $end
+$scope module IM $end
+$var wire 32 $ instr_out [31:0] $end
+$var wire 32 % read_address [31:0] $end
+$var wire 1 # reset $end
+$var integer 32 & k [31:0] $end
+$upscope $end
+$scope task init $end
+$upscope $end
+$scope task reset_dut $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b1000000 &
+b0 %
+b0 $
+0#
+b0 "
+b0 !
+$end
+#10000
+b1000000 &
+1#
+#20000
+b10100000000000010010011 !
+b10100000000000010010011 $
+#30000
+b101000000000000100010011 !
+b101000000000000100010011 $
+b1 "
+b1 %
+#40000
+b1000001000000110110011 !
+b1000001000000110110011 $
+b10 "
+b10 %
+#50000

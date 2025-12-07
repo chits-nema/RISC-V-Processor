@@ -1,0 +1,76 @@
+$date
+	Sat Dec 06 17:30:12 2025
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module program_counter_tb $end
+$var wire 32 ! pc_out [31:0] $end
+$var reg 1 " clk $end
+$var reg 1 # load_en $end
+$var reg 32 $ present_val [31:0] $end
+$var reg 1 % reset_n $end
+$scope module PC $end
+$var wire 1 " clk $end
+$var wire 1 # load_en $end
+$var wire 32 & present_val [31:0] $end
+$var wire 1 % reset_n $end
+$var reg 32 ' pc_out [31:0] $end
+$upscope $end
+$scope task init $end
+$upscope $end
+$scope task reset_dut $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b0 '
+b0 &
+0%
+b0 $
+0#
+0"
+b0 !
+$end
+#5000
+1"
+#10000
+0"
+1%
+#15000
+b100 !
+b100 '
+1"
+#20000
+0"
+#25000
+1"
+#30000
+0"
+1#
+b10000 $
+b10000 &
+#35000
+b10000 !
+b10000 '
+1"
+#40000
+0"
+0#
+#45000
+b10100 !
+b10100 '
+1"
+#50000
+0"
+#55000
+1"
+#60000
+0"
