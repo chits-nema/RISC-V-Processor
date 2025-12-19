@@ -11,7 +11,7 @@ module mux(
             2'b00: out <= A;
             2'b01: out <= B;
             2'b10: out <= C;
-            default : $display("Invalid sel input");
+            default : out = 2'b00;
         endcase
     end
 
@@ -32,7 +32,7 @@ module mux_4(
             2'b01: out <= B;
             2'b10: out <= C;
             2'b11: out <= D;
-            default : $display("Invalid sel input");
+            default : out = 2'b00;
         endcase
     end
 
