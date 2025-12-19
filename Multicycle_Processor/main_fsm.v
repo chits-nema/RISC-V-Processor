@@ -36,8 +36,8 @@ module main_fsm(
 
 
     //state transition
-    always @(posedge clk or negedge reset) begin
-        if (!reset)
+    always @(posedge clk) begin
+        if (reset)  // Active HIGH reset
             state <= FETCH;
         else
             state <= next_state;
@@ -135,8 +135,8 @@ module main_fsm(
             end
             JAL: begin
                 next_state = ALUWB;
-                sel_alu_src_a = 2'b01; //old pc
-                sel_alu_src_b = 2'b10; //imm
+                sel_alu_src_a = 2'b01; //old pc (PC of JAL instruction)
+                sel_alu_src_b = 2'b10; //4 (to compute PC+4 for return address)
                 sel_result = 2'b00;
                 alu_op = 2'b00; //add
                 pc_update = 1'b1;
