@@ -19,15 +19,16 @@ module alu(
             //XOR
             4'b0100: alu_out = A ^ B;
             //SLT
-            4'b0101: alu_out = (A < B) ? 32'b1 : 32'b0;
+            4'b0101: alu_out = ($signed(A) < $signed(B)) ? 32'b1 : 32'b0;
             //SLTU
-            4'b1001: alu_out = ($signed(A) < $signed(B)) ? 32'b1 : 32'b0;
+            4'b1001: alu_out = (A < B) ? 32'b1 : 32'b0;
             //SLL
             4'b0110: alu_out = A << B[4:0]; 
             //SRL
             4'b0111: alu_out = A >> B[4:0];  
             //SRA
-            4'b1000: alu_out = A >>> B[4:0];
+            4'b1000: alu_out = $signed(A) >>> B[4:0];
+            default: alu_out = 32'b0;
             endcase
         
         //set to zero when the output is zero for beq 
