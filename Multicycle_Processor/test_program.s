@@ -75,6 +75,62 @@ subroutine:
 test_upper:
     lui x31, 0xABCDE         # x31 = 0xABCDE000
 
+# TEST 9: Edge Cases - x0 Immutability
+test_x0:
+    addi x0, x0, 100         # Try to write to x0 (should remain 0)
+    add x0, x2, x3           # Try R-type write to x0 (should remain 0)
+
+# TEST 10: Shift Edge Cases
+test_shift_edges:
+    slli x5, x2, 0           # Shift by 0, x5 = 10 (unchanged)
+    slli x6, x3, 31          # Shift by 31, x6 = 20 << 31 = 0x80000000
+    srli x7, x6, 31          # Shift 0x80000000 >> 31 = 1
+    srai x8, x6, 31          # Arithmetic shift 0x80000000 >> 31 = 0xFFFFFFFF
+
+# TEST 11: Arithmetic Overflow/Underflow
+test_overflow:
+    lui x9, 0x7FFFF          # x9 = 0x7FFFF000
+    addi x9, x9, 0x7FF       # x9 = 0x7FFFFFFF (max positive)
+    addi x10, x9, 1          # x10 = 0x80000000 (overflow to min negative)
+    
+    lui x11, 0x80000         # x11 = 0x80000000 (min negative)
+    addi x12, x11, -1        # x12 = 0x7FFFFFFF (underflow to max positive)
+
+# TEST 12: Comparison Edge Cases
+test_compare_edges:
+    slt x13, x2, x2          # Compare equal (10 < 10) = 0
+    sltu x14, x2, x2         # Compare equal unsigned = 0
+    slt x15, x9, x10         # Compare 0x7FFFFFFF < 0x80000000 (signed) = 0
+    sltu x16, x9, x10        # Compare 0x7FFFFFFF < 0x80000000 (unsigned) = 1
+
+# TEST 13: Negative Number Operations
+test_negative:
+    add x17, x4, x4          # Add two negatives: -5 + -5 = -10
+    sub x18, x4, x2          # Subtract positive from negative: -5 - 10 = -15
+
+# TEST 14: Load-After-Store (RAW Hazard)
+test_raw_hazard:
+    lui x19, 0x10010         # Different memory address
+    addi x20, x2, 42         # x20 = 52
+    sw x20, 0(x19)           # Store 52
+    lw x21, 0(x19)           # Load immediately after store, x21 = 52
+
+# TEST 15: Backward Branch
+test_backward_branch:
+    addi x22, x0, 0          # x22 = 0 (counter)
+    addi x23, x0, 3          # x23 = 3 (limit)
+loop_start:
+    addi x22, x22, 1         # x22++
+    bne x22, x23, loop_start # Branch backward if x22 != 3
+    # After loop: x22 = 3
+
+# TEST 16: All Zeros and All Ones Patterns
+test_patterns:
+    addi x24, x0, -1         # x24 = 0xFFFFFFFF (all ones)
+    and x25, x24, x2         # 0xFFFFFFFF & 10 = 10
+    or x26, x0, x24          # 0 | 0xFFFFFFFF = 0xFFFFFFFF
+    xor x27, x24, x24        # 0xFFFFFFFF ^ 0xFFFFFFFF = 0
+
 end_test:
     # Infinite loop to end execution
     beq x0, x0, end_test
