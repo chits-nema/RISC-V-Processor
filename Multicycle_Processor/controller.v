@@ -50,18 +50,27 @@ module controller(
             2'b01: alu_control = 4'b0001; //sub
             2'b10: begin //R-type and I-type
                 case (funct3)
-                    3'b000: alu_control = funct7_5 ? 4'b0001 : 4'b0000; //sub or add
+                    3'b000: begin
+                        // For I-type (op=0010011), always ADD. For R-type (op=0110011), check funct7_5
+                        if (op == 7'b0010011) // I-type ADDI
+                            alu_control = 4'b0000; // ADD
+                        else // R-type ADD/SUB
+                            alu_control = funct7_5 ? 4'b0001 : 4'b0000; // SUB or ADD
+                    end
                     3'b001: alu_control = 4'b0110; //sll
                     3'b010: alu_control = 4'b0101; //slt
                     3'b011: alu_control = 4'b1001; //sltu
                     3'b100: alu_control = 4'b0100; //xor
                     3'b110: alu_control = 4'b0011; //or
                     3'b111: alu_control = 4'b0010; //and
-                    3'b101: alu_control = funct7_5 ? 4'b1000 : 4'b0111; //sra or srl
+                    3'b101: begin
+                        // For both I-type and R-type shifts, use funct7_5/bit[30] to select SRA vs SRL
+                        alu_control = funct7_5 ? 4'b1000 : 4'b0111; // SRA/SRAI or SRL/SRLI
+                    end
                     default: alu_control = 4'b0000;
                 endcase
             end
-            default: alu_control = 4'b0000;
+            default: alu_control = 4'bXXXX;
         endcase
     end
 
@@ -75,7 +84,7 @@ module controller(
             7'b0010011: sel_ext = 3'b000; //I-type
             7'b1101111: sel_ext = 3'b011; //jal - J-type
             7'b0110111: sel_ext = 3'b100; //lui - U-type
-            default: $display("Error invalid OP");
+            default: sel_ext = 3'bXXX;
         endcase
     end
 
