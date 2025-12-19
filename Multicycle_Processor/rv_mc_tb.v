@@ -180,11 +180,13 @@ module rv_mc_tb;
     reg [31:0] last_pc;
     reg [31:0] last_fetched_pc;
     integer stuck_count;
+    reg [3:0] last_state;
     
     initial begin
         last_pc = 32'hFFFFFFFF;
         last_fetched_pc = 32'hFFFFFFFF;
         stuck_count = 0;
+        last_state = 4'hF;
     end
 
     initial begin
@@ -246,6 +248,12 @@ module rv_mc_tb;
         
     always @(posedge clk) begin
         if (!reset) begin
+            // Monitor state transitions
+            if (DUT.CTRL.fsm.state !== last_state) begin
+                $display("  [STATE] %0d -> %0d at time %0t", last_state, DUT.CTRL.fsm.state, $time);
+                last_state = DUT.CTRL.fsm.state;
+            end
+            
             // Check if PC is stuck only when fetching (we_ir = 1)
             if (DUT.we_ir) begin
                 if (DUT.PC_reg == last_fetched_pc) begin
@@ -267,8 +275,8 @@ module rv_mc_tb;
             
             // Monitor instruction fetch
             if (DUT.we_ir) begin
-                $display("Time %0t: PC=0x%h, Fetched=0x%h, State=%0d", 
-                         $time, DUT.PC_reg, DUT.RD, DUT.CTRL.fsm.state);
+                $display("Time %0t: PC=0x%h, Fetched=0x%h, State=%0d (next=%0d)", 
+                         $time, DUT.PC_reg, DUT.RD, DUT.CTRL.fsm.state, DUT.CTRL.fsm.next_state);
             end
             
             // Monitor register writes
