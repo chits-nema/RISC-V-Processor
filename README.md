@@ -2,7 +2,7 @@
 
 A complete RISC-V processor implementation in Verilog, featuring both single-cycle and multicycle architectures. This project demonstrates fundamental computer architecture concepts including instruction execution, pipelining alternatives, and performance analysis.
 
-## 🚀 Features
+## Features
 
 - **Dual Architecture Implementation**
   - Single-cycle processor
@@ -20,7 +20,7 @@ A complete RISC-V processor implementation in Verilog, featuring both single-cyc
   - Edge case coverage (overflow, underflow, x0 immutability, etc.)
   - CPI (Cycles Per Instruction) analysis
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 ### Multicycle Processor CPI Results
 
@@ -35,7 +35,7 @@ A complete RISC-V processor implementation in Verilog, featuring both single-cyc
 | Upper Immediate (LUI) | 6 | 24 | 4.00 |
 | **Overall** | **72** | **282** | **3.92** |
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 RISC-V-Processor/
@@ -55,13 +55,13 @@ RISC-V-Processor/
 └── README.md
 ```
 
-## 🛠️ Requirements
+## Requirements
 
 - **Verilog Simulator**: Icarus Verilog (iverilog)
 - **Waveform Viewer**: GTKWave (optional, for debugging)
 - **RISC-V Toolchain** (optional, for assembling custom programs)
 
-## 🚦 Getting Started
+## Getting Started
 
 ### Running the Multicycle Processor
 
@@ -85,27 +85,27 @@ vvp top_module_tb.vvp
 gtkwave rv_mc_tb.vcd
 ```
 
-## 🧪 Testing
+## Testing
 
 The testbench includes comprehensive tests for:
 
 ### Basic Functionality
-- ✅ Arithmetic operations (ADD, SUB)
-- ✅ Logical operations (AND, OR, XOR)
-- ✅ Shift operations (SLL, SRL, SRA)
-- ✅ Memory operations (LW, SW)
-- ✅ Control flow (BEQ, BNE, JAL)
+- Arithmetic operations (ADD, SUB)
+- Logical operations (AND, OR, XOR)
+- Shift operations (SLL, SRL, SRA)
+- Memory operations (LW, SW)
+- Control flow (BEQ, BNE, JAL)
 
 ### Edge Cases
-- ✅ x0 register immutability
-- ✅ Arithmetic overflow/underflow
-- ✅ Shift by 0 and maximum (31)
-- ✅ Signed vs unsigned comparisons
-- ✅ Load-after-store hazards
-- ✅ Backward branches (loops)
-- ✅ All-zeros and all-ones patterns
+- x0 register immutability
+- Arithmetic overflow/underflow
+- Shift by 0 and maximum (31)
+- Signed vs unsigned comparisons
+- Load-after-store hazards
+- Backward branches (loops)
+- All-zeros and all-ones patterns
 
-## 📈 Architecture Comparison
+## Architecture Comparison
 
 | Feature | Single-Cycle | Multicycle |
 |---------|-------------|------------|
@@ -115,7 +115,7 @@ The testbench includes comprehensive tests for:
 | **Extensibility** | Harder (affects all instructions) | Easier (add FSM states) |
 | **Performance** | Better for simple programs | Better for complex instructions |
 
-## 🔍 Key Design Decisions
+## Key Design Decisions
 
 ### Multicycle Advantages
 - **Flexible timing**: Complex instructions can take more cycles without slowing down simple ones
@@ -129,7 +129,7 @@ The testbench includes comprehensive tests for:
 4. **MEMORY**: Access data memory (loads/stores)
 5. **WRITEBACK**: Write results to register file
 
-## 📝 Instruction Format Support
+## Instruction Format Support
 
 - **R-type**: `funct7 | rs2 | rs1 | funct3 | rd | opcode`
 - **I-type**: `imm[11:0] | rs1 | funct3 | rd | opcode`
@@ -138,21 +138,21 @@ The testbench includes comprehensive tests for:
 - **U-type**: `imm[31:12] | rd | opcode`
 - **J-type**: `imm[20|10:1|11|19:12] | rd | opcode`
 
-## 🐛 Known Issues
+## Known Issues
 
 - **BNE backward branch**: Loop counter shows incomplete execution (x22=1 instead of 3)
 - **Memory addressing**: Limited to 12-bit word-aligned addresses
 
-## 📚 References
+## References
 
 - [RISC-V Instruction Set Manual](https://riscv.org/technical/specifications/)
 - Patterson & Hennessy - *Computer Organization and Design: The Hardware/Software Interface*
 
-## 👥 Contributing
+## Contributing
 
 This is an educational project. Suggestions and improvements are welcome!
 
-## 📄 License
+## License
 
 This project is open source and available for educational purposes.
 
