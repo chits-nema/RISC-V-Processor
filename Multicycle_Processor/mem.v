@@ -6,7 +6,7 @@ module mem(
     output reg [31:0] RD
 );
 
-    //memory array of 1024 words (4KB)
+    //memory array of 1024 words (4KB), each word is 32bits
     reg [31:0] RAM [0:1023];
 
     //convert byte address to word address
