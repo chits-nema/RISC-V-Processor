@@ -3,12 +3,27 @@
 module rv_mc_tb;
     reg clk;
     reg reset;
-    integer passed, failed;
+    integer passed, failed, cycle_count;
 
     rv_mc DUT (
         .clk(clk),
         .rst(reset)
     );
+
+    // Instruction type counters
+    integer r_type_count, r_type_cycles;
+    integer i_type_arith_count, i_type_arith_cycles;
+    integer load_count, load_cycles;
+    integer store_count, store_cycles;
+    integer branch_count, branch_cycles;
+    integer jal_count, jal_cycles;
+    integer lui_count, lui_cycles;
+    integer total_instructions;
+    
+    // Cycle tracking for current instruction
+    integer instr_start_cycle;
+    reg [6:0] current_opcode;
+    reg tracking_instruction;
 
     //clock generation
     initial begin
@@ -100,30 +115,153 @@ module rv_mc_tb;
             $display("========================================\n");
         end
     endtask
+    
+    // Task: Display CPI statistics
+    task display_cpi_stats;
+        real r_type_cpi, i_type_cpi, load_cpi, store_cpi, branch_cpi, jal_cpi, lui_cpi, overall_cpi;
+        begin
+            $display("\n========================================");
+            $display("CPI (Cycles Per Instruction) Statistics");
+            $display("========================================");
+            $display("Total Cycles: %0d", cycle_count);
+            $display("Total Instructions: %0d\n", total_instructions);
+            
+            if (r_type_count > 0) begin
+                r_type_cpi = r_type_cycles * 1.0 / r_type_count;
+                $display("R-Type (ADD, SUB, etc.):");
+                $display("  Count: %0d, Cycles: %0d, CPI: %0.2f", r_type_count, r_type_cycles, r_type_cpi);
+            end
+            
+            if (i_type_arith_count > 0) begin
+                i_type_cpi = i_type_arith_cycles * 1.0 / i_type_arith_count;
+                $display("I-Type Arithmetic (ADDI, XORI, etc.):");
+                $display("  Count: %0d, Cycles: %0d, CPI: %0.2f", i_type_arith_count, i_type_arith_cycles, i_type_cpi);
+            end
+            
+            if (load_count > 0) begin
+                load_cpi = load_cycles * 1.0 / load_count;
+                $display("Load Instructions (LW):");
+                $display("  Count: %0d, Cycles: %0d, CPI: %0.2f", load_count, load_cycles, load_cpi);
+            end
+            
+            if (store_count > 0) begin
+                store_cpi = store_cycles * 1.0 / store_count;
+                $display("Store Instructions (SW):");
+                $display("  Count: %0d, Cycles: %0d, CPI: %0.2f", store_count, store_cycles, store_cpi);
+            end
+            
+            if (branch_count > 0) begin
+                branch_cpi = branch_cycles * 1.0 / branch_count;
+                $display("Branch Instructions (BEQ):");
+                $display("  Count: %0d, Cycles: %0d, CPI: %0.2f", branch_count, branch_cycles, branch_cpi);
+            end
+            
+            if (jal_count > 0) begin
+                jal_cpi = jal_cycles * 1.0 / jal_count;
+                $display("Jump Instructions (JAL):");
+                $display("  Count: %0d, Cycles: %0d, CPI: %0.2f", jal_count, jal_cycles, jal_cpi);
+            end
+            
+            if (lui_count > 0) begin
+                lui_cpi = lui_cycles * 1.0 / lui_count;
+                $display("Upper Immediate (LUI):");
+                $display("  Count: %0d, Cycles: %0d, CPI: %0.2f", lui_count, lui_cycles, lui_cpi);
+            end
+            
+            if (total_instructions > 0) begin
+                overall_cpi = cycle_count * 1.0 / total_instructions;
+                $display("\nOverall CPI: %0.2f", overall_cpi);
+            end
+            $display("========================================\n");
+        end
+    endtask
 
     // Monitor PC and instruction execution
     reg [31:0] last_pc;
+    reg [31:0] last_fetched_pc;
     integer stuck_count;
     
     initial begin
         last_pc = 32'hFFFFFFFF;
+        last_fetched_pc = 32'hFFFFFFFF;
         stuck_count = 0;
     end
-    
+
+    initial begin
+        cycle_count = 0;
+        r_type_count = 0; r_type_cycles = 0;
+        i_type_arith_count = 0; i_type_arith_cycles = 0;
+        load_count = 0; load_cycles = 0;
+        store_count = 0; store_cycles = 0;
+        branch_count = 0; branch_cycles = 0;
+        jal_count = 0; jal_cycles = 0;
+        lui_count = 0; lui_cycles = 0;
+        total_instructions = 0;
+        tracking_instruction = 0;
+    end
+
     always @(posedge clk) begin
         if (!reset) begin
-            // Check if PC is stuck (infinite loop detection)
-            if (DUT.PC_reg == last_pc) begin
-                stuck_count = stuck_count + 1;
-                if (stuck_count > 5) begin
-                    $display("\n[INFO] Infinite loop detected at PC=0x%h. Stopping.", DUT.PC_reg);
-                    #10;
-                    $display("\n=== Checking Results ===\n");
-                    check_all_results();
-                    $finish;
+            cycle_count = cycle_count + 1;
+        end
+    end
+    
+    // Track instruction types and cycles
+    always @(posedge clk) begin
+        if (!reset) begin
+            // Start tracking when instruction is fetched
+            if (DUT.we_ir && DUT.CTRL.fsm.state == 0) begin  // FETCH state
+                if (tracking_instruction) begin
+                    // Previous instruction completed, count its cycles
+                    case (current_opcode)
+                        7'b0110011: r_type_cycles = r_type_cycles + (cycle_count - instr_start_cycle);
+                        7'b0010011: i_type_arith_cycles = i_type_arith_cycles + (cycle_count - instr_start_cycle);
+                        7'b0000011: load_cycles = load_cycles + (cycle_count - instr_start_cycle);
+                        7'b0100011: store_cycles = store_cycles + (cycle_count - instr_start_cycle);
+                        7'b1100011: branch_cycles = branch_cycles + (cycle_count - instr_start_cycle);
+                        7'b1101111: jal_cycles = jal_cycles + (cycle_count - instr_start_cycle);
+                        7'b0110111: lui_cycles = lui_cycles + (cycle_count - instr_start_cycle);
+                    endcase
                 end
-            end else begin
-                stuck_count = 0;
+                
+                // Start tracking new instruction
+                current_opcode = DUT.RD[6:0];
+                instr_start_cycle = cycle_count;
+                tracking_instruction = 1;
+                
+                // Count instruction types
+                case (DUT.RD[6:0])
+                    7'b0110011: r_type_count = r_type_count + 1;
+                    7'b0010011: i_type_arith_count = i_type_arith_count + 1;
+                    7'b0000011: load_count = load_count + 1;
+                    7'b0100011: store_count = store_count + 1;
+                    7'b1100011: branch_count = branch_count + 1;
+                    7'b1101111: jal_count = jal_count + 1;
+                    7'b0110111: lui_count = lui_count + 1;
+                endcase
+                total_instructions = total_instructions + 1;
+            end
+        end
+    end
+        
+    always @(posedge clk) begin
+        if (!reset) begin
+            // Check if PC is stuck only when fetching (we_ir = 1)
+            if (DUT.we_ir) begin
+                if (DUT.PC_reg == last_fetched_pc) begin
+                    stuck_count = stuck_count + 1;
+                    if (stuck_count >= 2) begin
+                        $display("\n[INFO] Program completed at cycle %0d (PC=0x%h)", 
+                        cycle_count, DUT.PC_reg);
+                        #10;
+                        $display("\n=== Checking Results ===\n");
+                        check_all_results();
+                        $finish;
+                    end
+                end else begin
+                    stuck_count = 0;
+                    last_fetched_pc = DUT.PC_reg;
+                end
             end
             last_pc = DUT.PC_reg;
             
@@ -241,6 +379,9 @@ module rv_mc_tb;
 
             // Display summary
             display_summary();
+            
+            // Display CPI statistics
+            display_cpi_stats();
         end
     endtask
 

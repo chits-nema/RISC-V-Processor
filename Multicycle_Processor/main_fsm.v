@@ -151,6 +151,7 @@ module main_fsm(
                 sel_alu_src_a = 2'b10; //rs1
                 sel_alu_src_b = 2'b00; 
                 alu_op = 2'b01; //sub
+                sel_result = 2'b00;
                 branch = 1'b1;
             end
             default: begin
