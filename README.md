@@ -39,19 +39,6 @@ A complete RISC-V processor implementation in Verilog, featuring both single-cyc
 
 ```
 RISC-V-Processor/
-├── Single_Processor/
-│   ├── alu.v                 # Arithmetic Logic Unit
-│   ├── controller.v          # Single-cycle control unit
-│   ├── data_mem.v            # Data memory
-│   ├── instr_mem.v           # Instruction memory
-│   ├── multiplexer.v         # Multiplexer components
-│   ├── program_counter.v     # Program counter
-│   ├── reg_file.v            # Register file
-│   ├── sign_extender.v       # Immediate sign extender
-│   ├── top_module_sc.v       # Top-level single-cycle module
-│   ├── top_module_tb.v       # Testbench
-│   └── testbenches/          # Component testbenches
-│
 ├── Multicycle_Processor/
 │   ├── alu.v                 # Arithmetic Logic Unit
 │   ├── controller.v          # Multicycle control unit
