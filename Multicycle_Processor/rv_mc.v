@@ -61,8 +61,8 @@ module rv_mc (
         .out(SrcA)
     );
     
-    //srcB multiplexer
-     mux SRCB(
+    //srcB multiplexer (3:1)
+    mux SRCB(
         .sel(sel_alu_src_b),
         .A(rd2_reg),
         .B(ImmExt),
@@ -79,7 +79,7 @@ module rv_mc (
         .Zero(Zero)
     );
 
-    //result multiplexer
+    //result multiplexer (3:1)
     mux RESULTMUX(
         .sel(sel_result),
         .A(alu_reg),
@@ -143,9 +143,9 @@ module rv_mc (
         //controller enabled updating
         if (we_ir) begin
             instr_reg <= RD;
+            old_pc_reg <= PC_reg;  //capture PC of the instruction being fetched
         end 
         //clock dependant updating
-        old_pc_reg <= PC_reg;  //capturing old pc( from previous clk)
         data_reg <= RD;
         alu_reg <= AluResult;
         rd1_reg <= rd1;
