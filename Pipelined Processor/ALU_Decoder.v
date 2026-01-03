@@ -9,9 +9,9 @@ module aludec(
     always @(*)begin
         case(ALUOp)
             2'b00:  ALUControl = 4'b0000; //addition for lw and sw
-            2'b11:  ALUControl = 4'bxxxx; //implement i type an r-type in one go
+            2'b01:  ALUControl = 4'b0001; //subtraction for beq
             default: case(funct3) //R-type or I-type ALU
-                        3'b000: if(funct7b5)begin  // if 1 then we perform sub if 0 perform add
+                        3'b000: if(funct7b5 & opb5)begin  // sub only for R-type (opb5=1)
                                     ALUControl = 4'b0001; //sub
                                 end else ALUControl= 4'b0000; //add,addi
                         3'b001: ALUControl = 4'b1010; //sll 

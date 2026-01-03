@@ -6,7 +6,7 @@ module regfile(
     output [31:0] rd1, rd2
 );
 
-    reg [31:0] rf[31:0];
+    reg [31:0] rf[0:31];
 
     //three prted register file
     //read two ports combinationally (A1/RD1, A2/RD2)

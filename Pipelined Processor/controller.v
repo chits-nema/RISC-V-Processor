@@ -10,7 +10,7 @@ module controller(
     output MemWrite,
     output PCSrc, ALUSrc,
     output RegWrite, Jump,
-    output [1:0] ImmSrc,
+    output [2:0] ImmSrc,
     output [3:0] ALUControl,
     output ALUSrcA
 );

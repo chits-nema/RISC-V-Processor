@@ -21,7 +21,7 @@ module alu(
             default : ALUResult = 32'bx;
         endcase
 
-        Zero = ALUResult ? 1'b1 : 1'b0;
+        Zero = (ALUResult == 0) ? 1'b1 : 1'b0;
     end
 
 endmodule
