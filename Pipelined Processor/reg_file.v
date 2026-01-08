@@ -8,12 +8,20 @@ module regfile(
 
     reg [31:0] rf[0:31];
 
-    //three prted register file
+    // Initialize all registers to 0
+    integer i;
+    initial begin
+        for (i = 0; i < 32; i = i + 1) begin
+            rf[i] = 32'b0;
+        end
+    end
+
+    //three ported register file
     //read two ports combinationally (A1/RD1, A2/RD2)
-    //write third port on rising edge of clock (A3/WD3/WE3)
+    //write third port on falling edge of clock (A3/WD3/WE3)
     //register 0 hardwired to 0
 
-    always @( posedge clk) begin
+    always @(negedge clk) begin
         if(we3) rf[a3] <= wd3;
     end
 

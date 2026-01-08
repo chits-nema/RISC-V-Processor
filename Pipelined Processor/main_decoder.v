@@ -2,16 +2,16 @@ module maindec(
     input [6:0] op,
     output  [1:0] ResultSrc,
     output  MemWrite,
-    output  Branch, ALUSrc,
+    output  Branch, ALUSrcBSel,
     output  RegWrite, Jump,
     output  [2:0] ImmSrc,
     output  [1:0] ALUOp,
-    output  ALUSrcA
+    output  ALUSrcASel
 );
 
     reg [12:0] controls;
 
-    assign {RegWrite, ImmSrc, ALUSrc, MemWrite, ResultSrc, Branch, ALUOp, Jump, ALUSrcA} = controls;
+    assign {RegWrite, ImmSrc, ALUSrcBSel, MemWrite, ResultSrc, Branch, ALUOp, Jump, ALUSrcASel} = controls;
 
     always @(*)begin
         case(op)

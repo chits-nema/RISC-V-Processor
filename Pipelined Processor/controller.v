@@ -8,17 +8,17 @@ module controller(
     input Zero,
     output [1:0] ResultSrc,
     output MemWrite,
-    output PCSrc, ALUSrc,
+    output Branch, ALUSrcBSel,
     output RegWrite, Jump,
     output [2:0] ImmSrc,
     output [3:0] ALUControl,
-    output ALUSrcA
+    output ALUSrcASel,
+    output PCSrc
 );
 
     wire [1:0] ALUOp;
-    wire Branch;
 
-    maindec md(.op(op), .ResultSrc(ResultSrc), .MemWrite(MemWrite), .Branch(Branch), .ALUSrc(ALUSrc), .RegWrite(RegWrite), .Jump(Jump), .ImmSrc(ImmSrc), .ALUOp(ALUOp), .ALUSrcA(ALUSrcA));
+    maindec md(.op(op), .ResultSrc(ResultSrc), .MemWrite(MemWrite), .Branch(Branch), .ALUSrcBSel(ALUSrcBSel), .RegWrite(RegWrite), .Jump(Jump), .ImmSrc(ImmSrc), .ALUOp(ALUOp), .ALUSrcASel(ALUSrcASel));
     aludec ad(op[5], funct3, funct7b5, ALUOp, ALUControl);
     assign PCSrc = Branch & Zero | Jump;
 

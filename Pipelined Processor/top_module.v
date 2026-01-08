@@ -14,6 +14,6 @@ wire MemWrite;
 //instantiate processor and memories
 riscvsingle rvsingle(clk, reset, PC, Instr, MemWrite, DataAdr, WriteData, ReadData);
 
-imem imem(PC,Instr);
+imem imem(PC[7:2],Instr);
 dmem dmem(clk,MemWrite,DataAdr,WriteData,ReadData);
 endmodule
