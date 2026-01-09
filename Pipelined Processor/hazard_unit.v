@@ -1,6 +1,6 @@
 module hazard(
     input reg branchD, MemToRegE, RegWriteE, MemtoRegM, RegWriteM, RegWriteW,
-    input reg [4:0] RsD, RtD, RsE, WriteRegE, WriteRegE, WriteRegE, WriteRegM, WriteRegW,
+    input reg [4:0] RsD, RtD, Rs1E, WriteRegE, WriteRegE, WriteRegE, RegWriteM, RegWriteW,
     output reg stallF, stallD, ForwardAD, ForwardBD, FlushE,
     output logic [1:0] ForwardAE, ForwardBE,
     input clk, reset
@@ -8,33 +8,34 @@ module hazard(
 
     wire lwstall, branchStall;
 
-    //---------------------forwarding logic----------------------------------
-    wire [1:0] ForwardAE_t, ForwardBE_t;
-
+    //---------------------forwarding logic for data hazard----------------------------------
+    //forward from Memory stage
     always @(*)begin
-        if (RegWriteM & (RsE != 0) & (RsE == WriteRegM)) begin
-            ForwardAE_t = 2'b10;
-        end else if (RegWriteW & (RsE != 0) & (RsE == WriteRegW))begin
-            ForwardAE_t = 2'b01;
+        if (RegWriteM & (Rs1E != 0) & (Rs1E == RegWriteM)) begin
+            ForwardAE = 2'b10;
+        end else if (RegWriteW & (Rs1E != 0) & (Rs1E == RegWriteW))begin
+            ForwardAE = 2'b01;
         end else begin
-            ForwardAE_t = 2'b00;
+            ForwardAE = 2'b00;
         end
     end
 
+    //forward from Writeback stage
     always @(*)begin
-        if (RegWriteM & (RtE != 0) & (RtE == WriteRegM)) begin
-            ForwardBE_t = 2'b10;
-        end else if (RegWriteW & (RtE != 0) & (RtE == WriteRegW)) begin
-            ForwardBE_t = 2'b01;
-        end else ForwardBE_t = 2'b00;
+        if (RegWriteM & (Rs2E != 0) & (Rs2E == RegWriteM)) begin
+            ForwardBE = 2'b10;
+        end else if (RegWriteW & (Rs2E != 0) & (Rs2E == RegWriteW)) begin
+            ForwardBE = 2'b01;
+        end else ForwardBE = 2'b00;
     end
 
-    //----------------------------Control hazard Logic---------------------------
-    assign ForwardAD = RegWriteM & (RsD == WriteRegM) & (RsD!=0);
-    assign ForwardBD = RegWriteM & (RtD == WriteRegM) &(RtD!=0);
+    //Data Hazards using stalls 
 
+    //----------------------------Control hazard Logic---------------------------
+    assign ForwardAD = RegWriteM & (RsD == RegWriteM) & (RsD!=0);
+    assign ForwardBD = RegWriteM & (RtD == RegWriteM) &(RtD!=0);
     //----------------------------------Stalling Logic----------------------------------------
-    assign lwstall = MemToRegE & ((RtE == RsD) | (RtE == RtD)); //for lw commands
+    assign lwstall = MemToRegE & ((Rs2E == RsD) | (Rs2E == RtD)); //for lw commands
 
     flopenr #(1) regHaz1(~clk,reset, 1'b1, lwstall | branchStall, stallF);  //stallF = lwstall | branchStall
     flopenr #(1) regHaz2(~clk,reset, 1'b1, lwstall | branchStall, stallD);  //stallD = lwstall | branchSTall
