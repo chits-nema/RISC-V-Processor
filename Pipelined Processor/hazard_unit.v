@@ -1,8 +1,8 @@
 module hazard(
-    input reg branchD, MemToRegE, RegWriteE, MemtoRegM, RegWriteM, RegWriteW,
-    input reg [4:0] RsD, RtD, Rs1E, WriteRegE, WriteRegE, WriteRegE, RegWriteM, RegWriteW,
-    output reg stallF, stallD, ForwardAD, ForwardBD, FlushE,
-    output logic [1:0] ForwardAE, ForwardBE,
+    input wire RegWriteE, RegWriteM, RegWriteW, ResultSrcE, PcSrcE,  
+    input wire [4:0] Rs1E, Rs2E, Rs1D, RdE, Rs2D,
+    output reg stallF, stallD, FlushD, FlushE,
+    output reg [1:0] ForwardAE, ForwardBE,
     input clk, reset
 );
 
@@ -29,24 +29,32 @@ module hazard(
         end else ForwardBE = 2'b00;
     end
 
-    //Data Hazards using stalls 
+    //Data Hazards using stalls for load word instr
+    assign lwstall = ResultSrcE & ((Rs1D == RdE)|(Rs2D==RdE));
 
-    //----------------------------Control hazard Logic---------------------------
-    assign ForwardAD = RegWriteM & (RsD == RegWriteM) & (RsD!=0);
-    assign ForwardBD = RegWriteM & (RtD == RegWriteM) &(RtD!=0);
-    //----------------------------------Stalling Logic----------------------------------------
-    assign lwstall = MemToRegE & ((Rs2E == RsD) | (Rs2E == RtD)); //for lw commands
+    //stall control logic
+    always @(*) begin
+        if (lwstall) begin
+            //load-use hazard: stall Fetch and Decode stages
+            stallF = 1'b1;
+            stallD = 1'b1;
+        end else begin
+            //no stall
+            stallF = 1'b0;
+            stallD = 1'b0;
+        end
+    end
 
-    flopenr #(1) regHaz1(~clk,reset, 1'b1, lwstall | branchStall, stallF);  //stallF = lwstall | branchStall
-    flopenr #(1) regHaz2(~clk,reset, 1'b1, lwstall | branchStall, stallD);  //stallD = lwstall | branchSTall
+    //Flush control logic
+    always @(*) begin
+        //Flush Decode when branch is taken
+        FlushD = PcSrcE;
 
-    reg FlushE1;
-    flopenr #(1) regHaz3(~clk,reset, 1'b1, lwstall | branchStall, FlushE1);
-    flopenr #(1) regHaz6(~clk, reset, 1'b1, FlushE1, FlushE); //FlushE = lwstall | branchStall
+        //Flush Execute when:
+        //- Load-use hazard occurs (insert buddle)
+        //- Branch is taken (clear incorrectly fetched instruction)
+        FlushE = lwstall | PcSrcE;
 
-    flopenr #(2) regHaz4(~clk,reset, 1'b1, ForwardAE_t, ForwardAE);
-    flopenr #(2) regHaz5(~clk, reset, 1'b1, ForwardBE_t, ForwardBE);
-
-
+    end
 
 endmodule
