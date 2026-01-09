@@ -5,7 +5,7 @@ module dmem(
 );
     reg [31:0] RAM[0:63];
 
-    assign rd = RAM[a[31:2]]; //word aligned
+    assign rd = RAM[a[31:2]]; //word aligned - asynchronous read
 
     always @(posedge clk) begin
         if (we) begin
