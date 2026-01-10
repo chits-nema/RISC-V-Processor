@@ -88,7 +88,6 @@ wire [31:0] W_pc_plus_4;
 
 //Hazard control sigsnals
 wire [1:0] ForwardAE, ForwardBE;
-wire PC_Src;
 
 // Program Counter
 pc pc_reg(
@@ -110,7 +109,7 @@ adder pc_add(
 mux2 #(32) pc_mux(
     .d0(F_pc_plus_4),
     .d1(E_pcTarget),
-    .s(PC_Src),
+    .s(E_PCSrc),
     .y(F_pc_next)
 );
 
@@ -157,7 +156,7 @@ controller control_unit(
     .op(D_instr[6:0]),
     .funct3(D_instr[14:12]),
     .funct7b5(D_instr[30]),
-    .Zero(E_Zero),
+    .Zero(1'b0),
     .ResultSrc(D_ResultSrc),
     .MemWrite(D_MemWrite),
     .Branch(D_Branch),
@@ -167,7 +166,7 @@ controller control_unit(
     .ImmSrc(D_ImmSrc),
     .ALUControl(D_ALUControl),
     .ALUSrcASel(D_ALUSrcASel),
-    .PCSrc(PC_Src)
+    .PCSrc()
 );
 
 // Extend Unit
@@ -264,6 +263,9 @@ alu main_alu(
     .Zero(E_Zero)
 );
 
+// PC Source logic (Branch taken or Jump)
+assign E_PCSrc = (E_Branch & E_Zero) | E_Jump;
+
 // PC Target calculation (for branches/jumps)
 adder pc_target_add(
     .a(E_pc),
@@ -341,7 +343,7 @@ hazard hazard_unit(
     .RegWriteM(M_RegWrite),
     .RegWriteW(W_RegWrite),
     .ResultSrcE(E_ResultSrc[0]),
-    .PcSrcE(PC_Src),
+    .PcSrcE(E_PCSrc),
     .Rs1E(E_Rs1),
     .Rs2E(E_Rs2),
     .Rs1D(D_Rs1),
