@@ -1,3 +1,17 @@
+`include "alu.v"
+`include "controller.v"
+`include "data_mem.v"
+`include "EX_MA.v"
+`include "extend_unit.v"
+`include "generic_building_blocks.v"
+`include "hazard_unit.v"
+`include "ID_EX.v"
+`include "IF_ID.v"
+`include "instruction_mem.v"
+`include "MA_WB.v"
+`include "multiplexer.v"
+`include "program_counter.v"
+`include "reg_file.v"
 module rv_pl(
     input clk,
     input rst_n
@@ -44,9 +58,11 @@ wire [3:0] E_ALUControl;
 wire E_ALUSrcASel;
 wire E_PCSrc;
 wire E_Zero;
+wire [31:0] E_RD1, E_RD2;
 wire [31:0] E_SrcA, E_SrcB;
+wire [31:0] E_SrcA_forwarded, E_SrcB_forwarded;
 wire [31:0] E_WriteData;
-wire E_pcTarget;
+wire [31:0] E_pcTarget;
 wire [31:0] E_ALUResult;
 wire [1:0] E_ForwardA, E_ForwardB;
 wire E_flush;
@@ -74,7 +90,271 @@ wire [31:0] W_pc_plus_4;
 wire [1:0] ForwardAE, ForwardBE;
 wire PC_Src;
 
+// Program Counter
+pc pc_reg(
+    .clk(clk),
+    .rst(rst_n),
+    .en(~stallF),
+    .pc_in(F_pc_next),
+    .out(F_pc)
+);
 
+// PC + 4 Adder
+adder pc_add(
+    .a(F_pc),
+    .b(32'd4),
+    .y(F_pc_plus_4)
+);
 
+// PC Source Mux (PC_next = PCSrc ? E_pcTarget : PC+4)
+mux2 #(32) pc_mux(
+    .d0(F_pc_plus_4),
+    .d1(E_pcTarget),
+    .s(PC_Src),
+    .y(F_pc_next)
+);
+
+// Instruction Memory
+imem #(64) IMEM(
+    .a(F_pc[7:2]),
+    .rd(F_instr)
+);
+
+//=============================================== IF/ID Pipeline Register (PLR1) ===============================================
+if_id_reg PLR1(
+    .clk(clk),
+    .rst_n(rst_n),
+    .en(D_stall),
+    .clr(D_flush),
+    .F_pc(F_pc),
+    .F_instr(F_instr),
+    .F_pc_plus_4(F_pc_plus_4),
+    .D_pc(D_pc),
+    .D_instr(D_instr),
+    .D_pc_plus_4(D_pc_plus_4)
+);
+
+//=============================================== DECODE STAGE ===============================================
+// Extract register addresses
+assign D_Rs1 = D_instr[19:15];
+assign D_Rs2 = D_instr[24:20];
+assign D_Rd = D_instr[11:7];
+
+// Register File
+regfile RF(
+    .clk(clk),
+    .we3(W_RegWrite),
+    .a1(D_Rs1),
+    .a2(D_Rs2),
+    .a3(W_Rd),
+    .wd3(W_Result),
+    .rd1(D_RD1),
+    .rd2(D_RD2)
+);
+
+// Controller
+controller control_unit(
+    .op(D_instr[6:0]),
+    .funct3(D_instr[14:12]),
+    .funct7b5(D_instr[30]),
+    .Zero(E_Zero),
+    .ResultSrc(D_ResultSrc),
+    .MemWrite(D_MemWrite),
+    .Branch(D_Branch),
+    .ALUSrcBSel(D_ALUSrcBSel),
+    .RegWrite(D_RegWrite),
+    .Jump(D_Jump),
+    .ImmSrc(D_ImmSrc),
+    .ALUControl(D_ALUControl),
+    .ALUSrcASel(D_ALUSrcASel),
+    .PCSrc(PC_Src)
+);
+
+// Extend Unit
+extend ext_unit(
+    .instr(D_instr[31:7]),
+    .immsrc(D_ImmSrc),
+    .immext(D_ImmExt)
+);
+
+//=============================================== ID/EX Pipeline Register (PLR2) ===============================================
+decode_execute_reg PLR2(
+    .clk(clk),
+    .reset(rst_n),
+    .FlushE(E_flush),
+    // Control signals
+    .RegWriteD(D_RegWrite),
+    .ResultSrcD(D_ResultSrc),
+    .MemWriteD(D_MemWrite),
+    .JumpD(D_Jump),
+    .BranchD(D_Branch),
+    .ALUControlD(D_ALUControl[2:0]),
+    .ALUSrcD(D_ALUSrcBSel),
+    // Data signals
+    .RD1D(D_RD1),
+    .RD2D(D_RD2),
+    .PCD(D_pc),
+    .Rs1D(D_Rs1),
+    .Rs2D(D_Rs2),
+    .RdD(D_Rd),
+    .ImmExtD(D_ImmExt),
+    .PCPlus4D(D_pc_plus_4),
+    // Outputs
+    .RegWriteE(E_RegWrite),
+    .ResultSrcE(E_ResultSrc),
+    .MemWriteE(E_MemWrite),
+    .JumpE(E_Jump),
+    .BranchE(E_Branch),
+    .ALUControlE(E_ALUControl[2:0]),
+    .ALUSrcE(E_ALUSrcBSel),
+    .RD1E(E_RD1),
+    .RD2E(E_RD2),
+    .PCE(E_pc),
+    .Rs1E(E_Rs1),
+    .Rs2E(E_Rs2),
+    .RdE(E_Rd),
+    .ImmExtE(E_ImmExt),
+    .PCPlus4E(E_pc_plus_4)
+);
+
+//=============================================== EXECUTE STAGE ===============================================
+// Forward Mux A (for ALU SrcA)
+mux3 #(32) forward_mux_a(
+    .d0(E_RD1),
+    .d1(W_Result),
+    .d2(M_ALUResult),
+    .s(ForwardAE),
+    .y(E_SrcA_forwarded)
+);
+
+// ALU SrcA Mux (select between 0 for LUI or forwarded value)
+mux2 #(32) alu_srca_mux(
+    .d0(32'b0),
+    .d1(E_SrcA_forwarded),
+    .s(E_ALUSrcASel),
+    .y(E_SrcA)
+);
+
+// Forward Mux B (for ALU SrcB)
+mux3 #(32) forward_mux_b(
+    .d0(E_RD2),
+    .d1(W_Result),
+    .d2(M_ALUResult),
+    .s(ForwardBE),
+    .y(E_SrcB_forwarded)
+);
+
+// Store E_SrcB_forwarded as WriteData for memory stage
+assign E_WriteData = E_SrcB_forwarded;
+
+// ALU SrcB Mux (select between forwarded RD2 or Immediate)
+mux2 #(32) alu_srcb_mux(
+    .d0(E_SrcB_forwarded),
+    .d1(E_ImmExt),
+    .s(E_ALUSrcBSel),
+    .y(E_SrcB)
+);
+
+// ALU
+alu main_alu(
+    .SrcA(E_SrcA),
+    .SrcB(E_SrcB),
+    .ALUControl(E_ALUControl),
+    .ALUResult(E_ALUResult),
+    .Zero(E_Zero)
+);
+
+// PC Target calculation (for branches/jumps)
+adder pc_target_add(
+    .a(E_pc),
+    .b(E_ImmExt),
+    .y(E_pcTarget)
+);
+
+//=============================================== EX/MA Pipeline Register (PLR3) ===============================================
+execute_memory_reg PLR3(
+    .clk(clk),
+    .reset(rst_n),
+    // Control signals
+    .RegWriteE(E_RegWrite),
+    .ResultSrcE(E_ResultSrc),
+    .MemWriteE(E_MemWrite),
+    // Data signals
+    .ALUResultE(E_ALUResult),
+    .WriteDataE(E_WriteData),
+    .RdE(E_Rd),
+    .PCPlus4E(E_pc_plus_4),
+    // Outputs
+    .RegWriteM(M_RegWrite),
+    .ResultSrcM(M_ResultSrc),
+    .MemWriteM(M_MemWrite),
+    .ALUResultM(M_ALUResult),
+    .WriteDataM(M_WriteData),
+    .RdM(M_Rd),
+    .PCPlus4M(M_pc_plus_4)
+);
+
+//=============================================== MEMORY STAGE ===============================================
+// Data Memory
+dmem DMEM(
+    .clk(clk),
+    .we(M_MemWrite),
+    .a(M_ALUResult),
+    .wd(M_WriteData),
+    .rd(M_ReadDataW)
+);
+
+//=============================================== MA/WB Pipeline Register (PLR4) ===============================================
+memory_writeback_reg PLR4(
+    .clk(clk),
+    .reset(rst_n),
+    // Control signals
+    .RegWriteM(M_RegWrite),
+    .ResultSrcM(M_ResultSrc),
+    // Data signals
+    .ALUResultM(M_ALUResult),
+    .ReadDataM(M_ReadDataW),
+    .RdM(M_Rd),
+    .PCPlus4M(M_pc_plus_4),
+    // Outputs
+    .RegWriteW(W_RegWrite),
+    .ResultSrcW(W_ResultSrc),
+    .ALUResultW(W_ALUResult),
+    .ReadDataW(W_ReadData),
+    .RdW(W_Rd),
+    .PCPlus4W(W_pc_plus_4)
+);
+
+//=============================================== WRITEBACK STAGE ===============================================
+// Result Mux (select between ALUResult, ReadData, or PC+4)
+mux3 #(32) result_mux(
+    .d0(W_ALUResult),
+    .d1(W_ReadData),
+    .d2(W_pc_plus_4),
+    .s(W_ResultSrc),
+    .y(W_Result)
+);
+
+//=============================================== HAZARD UNIT ===============================================
+hazard hazard_unit(
+    .RegWriteE(E_RegWrite),
+    .RegWriteM(M_RegWrite),
+    .RegWriteW(W_RegWrite),
+    .ResultSrcE(E_ResultSrc[0]),
+    .PcSrcE(PC_Src),
+    .Rs1E(E_Rs1),
+    .Rs2E(E_Rs2),
+    .Rs1D(D_Rs1),
+    .RdE(E_Rd),
+    .Rs2D(D_Rs2),
+    .stallF(stallF),
+    .stallD(D_stall),
+    .FlushD(D_flush),
+    .FlushE(E_flush),
+    .ForwardAE(ForwardAE),
+    .ForwardBE(ForwardBE),
+    .clk(clk),
+    .reset(rst_n)
+);
 
 endmodule
