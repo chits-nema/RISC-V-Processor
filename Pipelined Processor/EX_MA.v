@@ -1,6 +1,7 @@
 module execute_memory_reg(
     input clk,
-    input reset,
+    input rst_n,            // Active-low reset
+    input flush,            // Flush signal (for exceptions, not control hazards)
     
     // Control signals from Execute
     input RegWriteE,
@@ -25,9 +26,20 @@ module execute_memory_reg(
     output reg [31:0] PCPlus4M
 );
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk) begin
+        if (!rst_n) begin
             // Reset: clear control signals
+            RegWriteM <= 1'b0;
+            ResultSrcM <= 2'b00;
+            MemWriteM <= 1'b0;
+            
+            ALUResultM <= 32'b0;
+            WriteDataM <= 32'b0;
+            RdM <= 5'b0;
+            PCPlus4M <= 32'b0;
+        end
+        else if (flush) begin
+            // Flush: clear control signals only
             RegWriteM <= 1'b0;
             ResultSrcM <= 2'b00;
             MemWriteM <= 1'b0;

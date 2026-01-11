@@ -1,6 +1,6 @@
 module memory_writeback_reg(
     input clk,
-    input reset,
+    input rst_n,            // Active-low reset
     
     // Control signals from Memory
     input RegWriteM,
@@ -23,8 +23,8 @@ module memory_writeback_reg(
     output reg [31:0] PCPlus4W
 );
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always @(posedge clk) begin
+        if (!rst_n) begin
             // Reset: clear control signals
             RegWriteW <= 1'b0;
             ResultSrcW <= 2'b00;

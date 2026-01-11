@@ -17,6 +17,10 @@ module hazard(
     input wire [4:0] Rs1D, //input from decode (ID) stage, source reg 1 in decode
 
     input wire [4:0] RdE, // Destination register in Execute
+    
+    input wire [4:0] RdM, // Destination register in Memory
+    
+    input wire [4:0] RdW, // Destination register in Writeback
 
     input wire [4:0] Rs2D, //input from decode (ID) stage, source reg 2 in Decode
 
@@ -37,9 +41,9 @@ module hazard(
     //forward from Memory stage
     // Forwarding logic for ALU input A (Rs1E)
     always @(*)begin
-        if (RegWriteM & (Rs1E != 0) & (Rs1E == RegWriteM)) begin
+        if (RegWriteM & (Rs1E != 0) & (Rs1E == RdM)) begin
             ForwardAE = 2'b10;
-        end else if (RegWriteW & (Rs1E != 0) & (Rs1E == RegWriteW))begin
+        end else if (RegWriteW & (Rs1E != 0) & (Rs1E == RdW))begin
             ForwardAE = 2'b01;
         end else begin
             ForwardAE = 2'b00;
@@ -49,9 +53,9 @@ module hazard(
     //forward from Writeback stage
     // Forwarding logic for ALU input B (Rs2E)
     always @(*)begin
-        if (RegWriteM & (Rs2E != 0) & (Rs2E == RegWriteM)) begin
+        if (RegWriteM & (Rs2E != 0) & (Rs2E == RdM)) begin
             ForwardBE = 2'b10;
-        end else if (RegWriteW & (Rs2E != 0) & (Rs2E == RegWriteW)) begin
+        end else if (RegWriteW & (Rs2E != 0) & (Rs2E == RdW)) begin
             ForwardBE = 2'b01;
         end else ForwardBE = 2'b00;
     end
@@ -61,27 +65,15 @@ module hazard(
 
     //stall control logic
     always @(*) begin
-        if (lwstall) begin
-            //load-use hazard: stall Fetch and Decode stages
-            stallF = 1'b1;
-            stallD = 1'b1;
-        end else begin
-            //no stall
-            stallF = 1'b0;
-            stallD = 1'b0;
-        end
-    end
+        stallF = lwstall;
+        stallD = lwstall;
 
-    //Flush control logic
-    always @(*) begin
-        //Flush Decode when branch is taken
+        //flush is stall or branch taken
+        FlushE = lwstall || PcSrcE;
+
+
+        //flash if branch taken
         FlushD = PcSrcE;
-
-        //Flush Execute when:
-        //- Load-use hazard occurs (insert buddle)
-        //- Branch is taken (clear incorrectly fetched instruction)
-        FlushE = lwstall | PcSrcE;
-
     end
 
 endmodule

@@ -1,6 +1,6 @@
 module decode_execute_reg(
     input clk,
-    input reset,
+    input rst_n,            // Active-low reset
     input FlushE,           // Flush signal (clear control signals)
     
     // Control signals from Decode
@@ -9,8 +9,9 @@ module decode_execute_reg(
     input MemWriteD,
     input JumpD,
     input BranchD,
-    input [2:0] ALUControlD,
+    input [3:0] ALUControlD,
     input ALUSrcD,
+    input ALUSrcASelD,
     
     // Data signals from Decode
     input [31:0] RD1D,      // Register data 1
@@ -28,8 +29,9 @@ module decode_execute_reg(
     output reg MemWriteE,
     output reg JumpE,
     output reg BranchE,
-    output reg [2:0] ALUControlE,
+    output reg [3:0] ALUControlE,
     output reg ALUSrcE,
+    output reg ALUSrcASelE,
     
     // Data outputs to Execute
     output reg [31:0] RD1E,
@@ -42,18 +44,18 @@ module decode_execute_reg(
     output reg [31:0] PCPlus4E
 );
 
-always @(posedge clk or posedge reset) begin
-        if (reset || FlushE) begin
-            // Reset or Flush: clear all control signals
+always @(posedge clk) begin
+        if (!rst_n || FlushE) begin
+            // Reset or flush: clear control signals (insert bubble)
             RegWriteE <= 1'b0;
             ResultSrcE <= 2'b00;
             MemWriteE <= 1'b0;
             JumpE <= 1'b0;
             BranchE <= 1'b0;
-            ALUControlE <= 3'b000;
+            ALUControlE <= 4'b0000;
             ALUSrcE <= 1'b0;
+            ALUSrcASelE <= 1'b0;
             
-            // Clear data signals
             RD1E <= 32'b0;
             RD2E <= 32'b0;
             PCE <= 32'b0;
@@ -64,15 +66,7 @@ always @(posedge clk or posedge reset) begin
             PCPlus4E <= 32'b0;
         end
         else begin
-            // Normal operation: pass values through
-            RegWriteE <= RegWriteD;
-            ResultSrcE <= ResultSrcD;
-            MemWriteE <= MemWriteD;
-            JumpE <= JumpD;
-            BranchE <= BranchD;
-            ALUControlE <= ALUControlD;
-            ALUSrcE <= ALUSrcD;
-            
+            // Normal operation: latch new values from decode stage
             RD1E <= RD1D;
             RD2E <= RD2D;
             PCE <= PCD;
@@ -81,6 +75,15 @@ always @(posedge clk or posedge reset) begin
             RdE <= RdD;
             ImmExtE <= ImmExtD;
             PCPlus4E <= PCPlus4D;
+            
+            RegWriteE <= RegWriteD;
+            ResultSrcE <= ResultSrcD;
+            MemWriteE <= MemWriteD;
+            JumpE <= JumpD;
+            BranchE <= BranchD;
+            ALUControlE <= ALUControlD;
+            ALUSrcE <= ALUSrcD;
+            ALUSrcASelE <= ALUSrcASelD;
         end
     end
 

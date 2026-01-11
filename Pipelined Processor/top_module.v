@@ -44,6 +44,7 @@ wire [31:0] D_RD1;
 wire [31:0] D_RD2;
 
 //-------------------------------------------------------EXECUTE---------------------------------------------
+//
 wire [31:0] E_pc;
 wire [4:0] E_Rs1; //19:15
 wire [4:0] E_Rs2; //24:20
@@ -52,10 +53,12 @@ wire [31:0] E_ImmExt;
 wire [31:0] E_pc_plus_4;
 wire [1:0] E_ResultSrc;
 wire E_MemWrite;
-wire E_Branch, E_ALUSrcBSel;
+wire E_Branch;
 wire E_RegWrite, E_Jump;
 wire [3:0] E_ALUControl;
-wire E_ALUSrcASel;
+
+//ALU and forwarding signals
+wire E_ALUSrcASel, E_ALUSrcBSel;
 wire E_PCSrc;
 wire E_Zero;
 wire [31:0] E_RD1, E_RD2;
@@ -92,8 +95,8 @@ wire [1:0] ForwardAE, ForwardBE;
 // Program Counter
 pc pc_reg(
     .clk(clk),
-    .rst(rst_n),
-    .en(~stallF),
+    .rst_n(rst_n),
+    .en(stallF),
     .pc_in(F_pc_next),
     .out(F_pc)
 );
@@ -106,16 +109,12 @@ adder pc_add(
 );
 
 // PC Source Mux (PC_next = PCSrc ? E_pcTarget : PC+4)
-mux2 #(32) pc_mux(
-    .d0(F_pc_plus_4),
-    .d1(E_pcTarget),
-    .s(E_PCSrc),
-    .y(F_pc_next)
-);
+// Use case equality to treat undefined PCSrc as 0 (no branch)
+assign F_pc_next = (E_PCSrc === 1'b1) ? E_pcTarget : F_pc_plus_4;
 
 // Instruction Memory
 imem #(64) IMEM(
-    .a(F_pc[7:2]),
+    .a(F_pc),
     .rd(F_instr)
 );
 
@@ -123,7 +122,7 @@ imem #(64) IMEM(
 if_id_reg PLR1(
     .clk(clk),
     .rst_n(rst_n),
-    .en(D_stall),
+    .en(stallF),
     .clr(D_flush),
     .F_pc(F_pc),
     .F_instr(F_instr),
@@ -156,7 +155,6 @@ controller control_unit(
     .op(D_instr[6:0]),
     .funct3(D_instr[14:12]),
     .funct7b5(D_instr[30]),
-    .Zero(1'b0),
     .ResultSrc(D_ResultSrc),
     .MemWrite(D_MemWrite),
     .Branch(D_Branch),
@@ -165,8 +163,7 @@ controller control_unit(
     .Jump(D_Jump),
     .ImmSrc(D_ImmSrc),
     .ALUControl(D_ALUControl),
-    .ALUSrcASel(D_ALUSrcASel),
-    .PCSrc()
+    .ALUSrcASel(D_ALUSrcASel)
 );
 
 // Extend Unit
@@ -179,7 +176,7 @@ extend ext_unit(
 //=============================================== ID/EX Pipeline Register (PLR2) ===============================================
 decode_execute_reg PLR2(
     .clk(clk),
-    .reset(rst_n),
+    .rst_n(rst_n),
     .FlushE(E_flush),
     // Control signals
     .RegWriteD(D_RegWrite),
@@ -187,8 +184,9 @@ decode_execute_reg PLR2(
     .MemWriteD(D_MemWrite),
     .JumpD(D_Jump),
     .BranchD(D_Branch),
-    .ALUControlD(D_ALUControl[2:0]),
+    .ALUControlD(D_ALUControl),
     .ALUSrcD(D_ALUSrcBSel),
+    .ALUSrcASelD(D_ALUSrcASel),
     // Data signals
     .RD1D(D_RD1),
     .RD2D(D_RD2),
@@ -204,8 +202,9 @@ decode_execute_reg PLR2(
     .MemWriteE(E_MemWrite),
     .JumpE(E_Jump),
     .BranchE(E_Branch),
-    .ALUControlE(E_ALUControl[2:0]),
+    .ALUControlE(E_ALUControl),
     .ALUSrcE(E_ALUSrcBSel),
+    .ALUSrcASelE(E_ALUSrcASel),
     .RD1E(E_RD1),
     .RD2E(E_RD2),
     .PCE(E_pc),
@@ -226,10 +225,10 @@ mux3 #(32) forward_mux_a(
     .y(E_SrcA_forwarded)
 );
 
-// ALU SrcA Mux (select between 0 for LUI or forwarded value)
+// ALU SrcA Mux (select between forwarded value or 0 for LUI)
 mux2 #(32) alu_srca_mux(
-    .d0(32'b0),
-    .d1(E_SrcA_forwarded),
+    .d0(E_SrcA_forwarded),
+    .d1(32'b0),
     .s(E_ALUSrcASel),
     .y(E_SrcA)
 );
@@ -276,7 +275,8 @@ adder pc_target_add(
 //=============================================== EX/MA Pipeline Register (PLR3) ===============================================
 execute_memory_reg PLR3(
     .clk(clk),
-    .reset(rst_n),
+    .rst_n(rst_n),
+    .flush(1'b0),  // Not used for control hazards (branches/jumps) - only for exceptions
     // Control signals
     .RegWriteE(E_RegWrite),
     .ResultSrcE(E_ResultSrc),
@@ -309,7 +309,7 @@ dmem DMEM(
 //=============================================== MA/WB Pipeline Register (PLR4) ===============================================
 memory_writeback_reg PLR4(
     .clk(clk),
-    .reset(rst_n),
+    .rst_n(rst_n),
     // Control signals
     .RegWriteM(M_RegWrite),
     .ResultSrcM(M_ResultSrc),
@@ -348,6 +348,8 @@ hazard hazard_unit(
     .Rs2E(E_Rs2),
     .Rs1D(D_Rs1),
     .RdE(E_Rd),
+    .RdM(M_Rd),
+    .RdW(W_Rd),
     .Rs2D(D_Rs2),
     .stallF(stallF),
     .stallD(D_stall),

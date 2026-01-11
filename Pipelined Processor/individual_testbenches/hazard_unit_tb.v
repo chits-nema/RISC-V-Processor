@@ -5,12 +5,18 @@ module hazard_unit_tb;
     //inputs 
     reg [4:0] Rs1D, Rs2D, Rs1E, Rs2E, RdE, RdM, RdW;
     reg ResultSrcE0, regWriteE, PCSrcE, RegWriteM, RegWriteW;
-
-    input clk, reset;
+    reg clk, reset;
+    
     //outputs
     wire [1:0] ForwardAE;
     wire [1:0] ForwardBE;
     wire stallF, stallD, FlushD, FlushE;
+    
+    // Clock generation
+    initial begin
+        clk = 0;
+        forever #5 clk = ~clk;  // 10ns period
+    end
 
     hazard uut(
         .clk(clk),
@@ -80,6 +86,15 @@ module hazard_unit_tb;
     endtask
 
     initial begin
+        $dumpfile("hazard_unit_tb.vcd");
+        $dumpvars(0, hazard_unit_tb);
+        
+        // Initialize reset
+        reset = 1;
+        #15;
+        reset = 0;
+        #5;
+        
         $display("========================================");
         $display("Starting Hazard Unit Tests");
         $display("========================================");
